@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>MeDataHub - Deteksi Duplikat Data Pasien</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --tosca: #00B4A6;
+    --teal: #00D68F;
+    --lime: #B6F500;
+    --bg: #FFFFFF;
+    --bg-alt: #EAFBF5;
+    --bg-alt2: #DFFBEA;
+    --text: #014D4E;
+    --text-muted: #4C8C82;
+    --card-bg: #FFFFFF;
+    --card-bg-alt: #E9FFF6;
+    --border: #B7F5E0;
+    --info-bg: #FFFFFF;
+    --info-border: #00D68F;
+    --shadow: rgba(0, 180, 166, 0.15);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #062821;
+      --bg-alt: #073730;
+      --bg-alt2: #0A4A3E;
+      --text: #DFFFF3;
+      --text-muted: #8FD9C8;
+      --card-bg: #0A3E34;
+      --card-bg-alt: #0D4A3E;
+      --border: #146B58;
+      --info-bg: #0A3E34;
+      --info-border: #00D68F;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #062821;
+    --bg-alt: #073730;
+    --bg-alt2: #0A4A3E;
+    --text: #DFFFF3;
+    --text-muted: #8FD9C8;
+    --card-bg: #0A3E34;
+    --card-bg-alt: #0D4A3E;
+    --border: #146B58;
+    --info-bg: #0A3E34;
+    --info-border: #00D68F;
+    --shadow: rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 45%, var(--bg-alt2) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem 1rem 4rem;
+  }
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .hero {
+    background: linear-gradient(120deg, #00B4A6 0%, #00D68F 45%, #B6F500 100%);
+    padding: 2rem 1.8rem;
+    border-radius: 22px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.25);
+    color: #ffffff;
+    padding: 0.25rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.7rem;
+  }
+  .hero h1 {
+    color: #ffffff;
+    font-weight: 800;
+    font-size: clamp(1.5rem, 4vw, 2.2rem);
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+  .hero p {
+    color: #EEFFF9;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    max-width: 640px;
+  }
+  .info-card {
+    background: var(--info-bg);
+    border-left: 6px solid var(--info-border);
+    padding: 1rem 1.3rem;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .info-card code {
+    background: var(--bg-alt2);
+    color: var(--tosca);
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .controls-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+    align-items: flex-start;
+  }
+  .btn {
+    background: linear-gradient(120deg, #00C896, #A6E100);
+    color: #003D33;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif;
+    border: none;
+    border-radius: 12px;
+    padding: 0.7rem 1.4rem;
+    box-shadow: 0 4px 12px rgba(0, 200, 150, 0.35);
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .btn:hover { filter: brightness(1.05); }
+  .btn.secondary {
+    background: var(--card-bg);
+    color: var(--tosca);
+    border: 2px solid var(--border);
+    box-shadow: none;
+  }
+  .upload-box {
+    background: var(--card-bg-alt);
+    border: 2.5px dashed #4CE0B3;
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    flex: 1;
+    min-width: 240px;
+    cursor: pointer;
+  }
+  .upload-box input { display: none; }
+  .upload-box .label {
+    font-weight: 600;
+    color: var(--tosca);
+  }
+  .upload-box .sub {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+  .threshold-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem 1.4rem;
+    flex: 1;
+    min-width: 240px;
+  }
+  .threshold-box label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .threshold-box input[type=range] {
+    width: 100%;
+    accent-color: #00C896;
+  }
+  .threshold-box .val {
+    font-weight: 800;
+    color: var(--tosca);
+    font-size: 1.1rem;
+  }
+  .threshold-box .caption {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+  }
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin: 1.3rem 0;
+  }
+  .metric-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, var(--card-bg-alt) 100%);
+    border: 1px solid var(--border);
+    padding: 1rem 1.2rem;
+    border-radius: 18px;
+    box-shadow: 0 6px 16px rgba(0, 180, 166, 0.1);
+  }
+  .metric-card .lbl {
+    color: var(--tosca);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .metric-card .num {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 1.8rem;
+    margin-top: 0.2rem;
+  }
+  .section-title {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--tosca);
+    margin: 1.5rem 0 0.6rem;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    max-height: 420px;
+    overflow-y: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: var(--card-bg);
+  }
+  th, td {
+    padding: 0.55rem 0.8rem;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--card-bg-alt);
+    color: var(--tosca);
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+  }
+  .badge-score {
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+  }
+  .score-high { background: #FFE1E1; color: #B23838; }
+  .score-mid { background: #FFF3D0; color: #93690A; }
+  .note-box {
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    padding: 1rem 1.2rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 2.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <span class="hero-badge">Tugas 2 - Manajemen Data</span>
+    <h1>MeDataHub - Deteksi Duplikat Data Pasien</h1>
+    <p>Menjaga kualitas data kesehatan dengan mendeteksi record pasien yang duplikat atau tercatat tidak konsisten. Semua proses berjalan langsung di browser kamu - tidak ada data yang dikirim ke server manapun.</p>
+  </div>
+
+  <div class="info-card">
+    Upload file CSV data pasien (kolom wajib: <code>id_record</code>, <code>nama</code>, <code>tgl_lahir</code>, <code>nik</code>, <code>alamat</code>), atau klik <b>"Buat Data Contoh"</b> untuk langsung mencoba dengan data dummy.
+  </div>
+
+  <div class="controls-row">
+    <label class="upload-box" id="uploadBox">
+      <input type="file" id="fileInput" accept=".csv" />
+      <div class="label">Klik atau seret file CSV ke sini</div>
+      <div class="sub" id="uploadStatus">Belum ada file dipilih</div>
+    </label>
+    <div class="threshold-box">
+      <label>Threshold skor duplikat: <span class="val" id="thresholdVal">70</span></label>
+      <input type="range" id="thresholdSlider" min="0" max="100" step="5" value="70" />
+      <div class="caption">Makin rendah = makin sensitif (lebih banyak tertangkap, lebih banyak false positive).</div>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <button class="btn" id="demoBtn">Buat Data Contoh (190 pasien)</button>
+    <button class="btn secondary" id="downloadDemoBtn" style="display:none;">Download CSV Contoh Ini</button>
+    <button class="btn secondary" id="downloadReportBtn" style="display:none;">Download Laporan Duplikat (CSV)</button>
+  </div>
+
+  <div id="resultsArea" style="display:none;">
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="lbl">Total Record</div>
+        <div class="num" id="mTotal">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="lbl">Pasangan Dicurigai Duplikat</div>
+        <div class="num" id="mDupe">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="lbl">Proporsi Terindikasi</div>
+        <div class="num" id="mPct">0%</div>
+      </div>
+    </div>
+
+    <div class="section-title">Data Pasien (setelah upload)</div>
+    <div class="table-wrap">
+      <table id="dataTable"><thead></thead><tbody></tbody></table>
+    </div>
+
+    <div class="section-title">Hasil Deteksi Duplikat</div>
+    <div class="table-wrap">
+      <table id="resultTable"><thead></thead><tbody></tbody></table>
+    </div>
+    <div id="noResultNote" class="note-box" style="display:none;">
+      Tidak ada pasangan yang melewati threshold saat ini. Coba turunkan threshold di atas.
+    </div>
+  </div>
+
+  <footer>MeDataHub &middot; Proposal Project Manajemen Data &middot; berjalan sepenuhnya di browser kamu</footer>
+</div>
+
+<script>
+let currentData = [];
+let currentReport = [];
+
+function normalizeName(s) {
+  return String(s || "").trim().toUpperCase().replace(/\s+/g, " ");
+}
+function normalizeDate(s) {
+  s = String(s || "").trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return s;
+  m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return m[3] + "-" + m[2] + "-" + m[1];
+  return s;
+}
+function normalizeAddr(s) {
+  return String(s || "").trim().toUpperCase().replace(/,/g, " ").replace(/\s+/g, " ");
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = Math.min(
+        dp[j] + 1,
+        dp[j - 1] + 1,
+        prev + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+function similarityRatio(a, b) {
+  const maxLen = Math.max(a.length, b.length, 1);
+  return (1 - levenshtein(a, b) / maxLen) * 100;
+}
+
+function jaroWinkler(s1, s2) {
+  if (s1 === s2) return 1;
+  const len1 = s1.length, len2 = s2.length;
+  if (len1 === 0 || len2 === 0) return 0;
+  const matchDist = Math.floor(Math.max(len1, len2) / 2) - 1;
+  const s1Matches = new Array(len1).fill(false);
+  const s2Matches = new Array(len2).fill(false);
+  let matches = 0;
+  for (let i = 0; i < len1; i++) {
+    const start = Math.max(0, i - matchDist);
+    const end = Math.min(i + matchDist + 1, len2);
+    for (let j = start; j < end; j++) {
+      if (s2Matches[j] || s1[i] !== s2[j]) continue;
+      s1Matches[i] = true;
+      s2Matches[j] = true;
+      matches++;
+      break;
+    }
+  }
+  if (matches === 0) return 0;
+  let t = 0, k = 0;
+  for (let i = 0; i < len1; i++) {
+    if (!s1Matches[i]) continue;
+    while (!s2Matches[k]) k++;
+    if (s1[i] !== s2[k]) t++;
+    k++;
+  }
+  t /= 2;
+  const jaro = (matches / len1 + matches / len2 + (matches - t) / matches) / 3;
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, len1, len2); i++) {
+    if (s1[i] === s2[i]) prefix++; else break;
+  }
+  return jaro + prefix * 0.1 * (1 - jaro);
+}
+
+function scorePair(r1, r2) {
+  const skorNama = similarityRatio(r1.nama_norm, r2.nama_norm);
+  const skorNik = r1.nik === r2.nik ? 100 : 0;
+  const skorTgl = r1.tgl_norm === r2.tgl_norm ? 100 : 0;
+  const skorAlamat = jaroWinkler(r1.alamat_norm, r2.alamat_norm) * 100;
+  const skorAkhir = skorNama * 0.4 + skorNik * 0.3 + skorTgl * 0.2 + skorAlamat * 0.1;
+  return {
+    skorNama: Math.round(skorNama * 10) / 10,
+    skorNik: Math.round(skorNik * 10) / 10,
+    skorTgl: Math.round(skorTgl * 10) / 10,
+    skorAlamat: Math.round(skorAlamat * 10) / 10,
+    skorAkhir: Math.round(skorAkhir * 10) / 10,
+  };
+}
+
+function runDetection(data, threshold) {
+  const enriched = data.map(r => ({
+    ...r,
+    nama_norm: normalizeName(r.nama),
+    tgl_norm: normalizeDate(r.tgl_lahir),
+    alamat_norm: normalizeAddr(r.alamat),
+  }));
+  const blocks = {};
+  enriched.forEach(r => {
+    const key = r.nama_norm.charAt(0) || "?";
+    if (!blocks[key]) blocks[key] = [];
+    blocks[key].push(r);
+  });
+  const hasil = [];
+  Object.values(blocks).forEach(group => {
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        const s = scorePair(group[i], group[j]);
+        if (s.skorAkhir >= threshold) {
+          hasil.push({
+            id_record_1: group[i].id_record, nama_1: group[i].nama,
+            id_record_2: group[j].id_record, nama_2: group[j].nama,
+            skor_nama: s.skorNama, skor_nik: s.skorNik,
+            skor_tgl_lahir: s.skorTgl, skor_alamat: s.skorAlamat,
+            skor_akhir: s.skorAkhir,
+          });
+        }
+      }
+    }
+  });
+  hasil.sort((a, b) => b.skor_akhir - a.skor_akhir);
+  return hasil;
+}
+
+function renderDataTable(data) {
+  const table = document.getElementById("dataTable");
+  const cols = ["id_record", "nama", "tgl_lahir", "nik", "alamat"];
+  table.querySelector("thead").innerHTML = "<tr>" + cols.map(c => `<th>${c}</th>`).join("") + "</tr>";
+  const rows = data.slice(0, 200).map(r =>
+    "<tr>" + cols.map(c => `<td>${r[c] ?? ""}</td>`).join("") + "</tr>"
+  ).join("");
+  table.querySelector("tbody").innerHTML = rows;
+}
+
+function renderResultTable(report) {
+  const table = document.getElementById("resultTable");
+  const noNote = document.getElementById("noResultNote");
+  if (report.length === 0) {
+    table.querySelector("thead").innerHTML = "";
+    table.querySelector("tbody").innerHTML = "";
+    noNote.style.display = "block";
+    document.getElementById("downloadReportBtn").style.display = "none";
+    return;
+  }
+  noNote.style.display = "none";
+  document.getElementById("downloadReportBtn").style.display = "inline-block";
+  const cols = ["id_record_1", "nama_1", "id_record_2", "nama_2", "skor_nama", "skor_nik", "skor_tgl_lahir", "skor_alamat", "skor_akhir"];
+  table.querySelector("thead").innerHTML = "<tr>" + cols.map(c => `<th>${c}</th>`).join("") + "</tr>";
+  const rows = report.map(r => {
+    const cls = r.skor_akhir >= 90 ? "score-high" : "score-mid";
+    return "<tr>" + cols.map(c => {
+      if (c === "skor_akhir") return `<td><span class="badge-score ${cls}">${r[c]}</span></td>`;
+      return `<td>${r[c]}</td>`;
+    }).join("") + "</tr>";
+  }).join("");
+  table.querySelector("tbody").innerHTML = rows;
+}
+
+function toCsv(rows) {
+  if (rows.length === 0) return "";
+  const cols = Object.keys(rows[0]);
+  const escape = v => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [cols.join(",")];
+  rows.forEach(r => lines.push(cols.map(c => escape(r[c])).join(",")));
+  return lines.join("\n");
+}
+
+function downloadCsv(filename, rows) {
+  const csv = toCsv(rows);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function processData(data, sourceLabel) {
+  currentData = data;
+  const threshold = parseInt(document.getElementById("thresholdSlider").value, 10);
+  currentReport = runDetection(data, threshold);
+
+  document.getElementById("resultsArea").style.display = "block";
+  document.getElementById("mTotal").textContent = data.length;
+  document.getElementById("mDupe").textContent = currentReport.length;
+  const pct = data.length > 0 ? Math.round((currentReport.length / data.length) * 1000) / 10 : 0;
+  document.getElementById("mPct").textContent = pct + "%";
+
+  renderDataTable(data);
+  renderResultTable(currentReport);
+  document.getElementById("uploadStatus").textContent = sourceLabel;
+}
+
+document.getElementById("fileInput").addEventListener("change", function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: function (results) {
+      const required = ["id_record", "nama", "tgl_lahir", "nik", "alamat"];
+      const cols = results.meta.fields || [];
+      const missing = required.filter(c => !cols.includes(c));
+      if (missing.length > 0) {
+        alert("Kolom wajib tidak lengkap. Dibutuhkan: " + required.join(", "));
+        return;
+      }
+      document.getElementById("downloadDemoBtn").style.display = "none";
+      processData(results.data, file.name + " (" + Math.round(file.size / 1024) + " KB)");
+    }
+  });
+});
+
+document.getElementById("thresholdSlider").addEventListener("input", function () {
+  document.getElementById("thresholdVal").textContent = this.value;
+  if (currentData.length > 0) {
+    currentReport = runDetection(currentData, parseInt(this.value, 10));
+    document.getElementById("mDupe").textContent = currentReport.length;
+    const pct = currentData.length > 0 ? Math.round((currentReport.length / currentData.length) * 1000) / 10 : 0;
+    document.getElementById("mPct").textContent = pct + "%";
+    renderResultTable(currentReport);
+  }
+});
+
+document.getElementById("downloadReportBtn").addEventListener("click", function () {
+  downloadCsv("laporan_duplikat.csv", currentReport);
+});
+
+document.getElementById("downloadDemoBtn").addEventListener("click", function () {
+  downloadCsv("pasien_contoh.csv", currentData);
+});
+
+const FIRST_NAMES = ["Siti", "Budi", "Ahmad", "Dewi", "Rina", "Agus", "Wati", "Joko", "Sri", "Hendra",
+  "Yuni", "Tono", "Lestari", "Bambang", "Ratna", "Anwar", "Fitri", "Dedi", "Ayu", "Yanto",
+  "Diah", "Sutrisno", "Wulan", "Ridwan", "Nurul", "Faisal", "Indah", "Guntur", "Melati", "Rudi"];
+const LAST_NAMES = ["Santoso", "Wijaya", "Kusuma", "Pratama", "Saputra", "Hidayat", "Firmansyah",
+  "Winarsih", "Rahimah", "Suryatmi", "Habibi", "Permadi", "Maryadi", "Fujiati", "Yuniar",
+  "Nugroho", "Setiawan", "Amelia", "Handoko", "Utami"];
+const TITLES = ["", "", "", "", "Ir. ", "Hj. ", "H. ", "Dr. ", "Tgk. "];
+const SUFFIXES = ["", "", "", "", ", S.H.", ", M.Farm", ", M.TI.", ", S.Kom."];
+const STREETS = ["Jl. Kenanga", "Jl. Mawar", "Jl. Melati", "Jl. Anggrek", "Jl. Kamboja", "Jl. Dahlia", "Jl. Cempaka"];
+const CITIES = ["Surabaya", "Sidoarjo", "Malang", "Gresik", "Mojokerto"];
+
+function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+function randomDate() {
+  const y = randInt(1935, 2020), m = randInt(1, 12), d = randInt(1, 28);
+  return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+function randomNik() {
+  let s = "";
+  for (let i = 0; i < 16; i++) s += randInt(0, 9);
+  return s;
+}
+function randomName() {
+  return pick(TITLES) + pick(FIRST_NAMES) + " " + pick(LAST_NAMES) + pick(SUFFIXES);
+}
+function randomAddress() {
+  return pick(STREETS) + " No. " + randInt(1, 99) + ", " + pick(CITIES);
+}
+function typoName(name) {
+  if (name.length < 4) return name;
+  const pos = randInt(1, name.length - 2);
+  const action = pick(["hapus", "ganti", "duplikat"]);
+  if (action === "hapus") return name.slice(0, pos) + name.slice(pos + 1);
+  if (action === "ganti") return name.slice(0, pos) + pick(["a", "i", "u", "e", "o"]) + name.slice(pos + 1);
+  return name.slice(0, pos) + name[pos] + name.slice(pos);
+}
+function altDateFormat(iso) {
+  const [y, m, d] = iso.split("-");
+  return d + "/" + m + "/" + y;
+}
+function corruptNik(nik) {
+  const pos = randInt(0, nik.length - 1);
+  return nik.slice(0, pos) + randInt(0, 9) + nik.slice(pos + 1);
+}
+function messyAddress(addr) {
+  return addr.toLowerCase().replace(/, /g, ",   ");
+}
+
+function generateDemoDataset() {
+  const N_ASLI = 150, N_DUP = 40;
+  const asli = [];
+  for (let i = 1; i <= N_ASLI; i++) {
+    asli.push({
+      id_record: i,
+      nama: randomName(),
+      tgl_lahir: randomDate(),
+      nik: randomNik(),
+      alamat: randomAddress(),
+    });
+  }
+  const dup = [];
+  const chosen = [...asli].sort(() => Math.random() - 0.5).slice(0, N_DUP);
+  let nextId = N_ASLI + 1;
+  chosen.forEach(src => {
+    const rec = { ...src, id_record: nextId++ };
+    const kerusakan = ["nama", "tanggal", "nik", "alamat"].sort(() => Math.random() - 0.5).slice(0, randInt(1, 3));
+    if (kerusakan.includes("nama")) rec.nama = typoName(rec.nama);
+    if (kerusakan.includes("tanggal")) rec.tgl_lahir = altDateFormat(rec.tgl_lahir);
+    if (kerusakan.includes("nik")) rec.nik = corruptNik(rec.nik);
+    if (kerusakan.includes("alamat")) rec.alamat = messyAddress(rec.alamat);
+    dup.push(rec);
+  });
+  const all = [...asli, ...dup].sort(() => Math.random() - 0.5);
+  return all;
+}
+
+document.getElementById("demoBtn").addEventListener("click", function () {
+  const data = generateDemoDataset();
+  document.getElementById("downloadDemoBtn").style.display = "inline-block";
+  processData(data, "Data contoh (dibuat otomatis di browser)");
+});
+</script>
+</body>
+</html>
